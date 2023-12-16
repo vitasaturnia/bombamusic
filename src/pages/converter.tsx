@@ -1,4 +1,3 @@
-// src/components/DownloadPage.jsx
 import React, { useState } from 'react';
 
 const DownloadPage = () => {

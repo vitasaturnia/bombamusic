@@ -1,23 +1,40 @@
-// functions/download.js
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
-const fs = require('fs').promises; // Using fs.promises for async file operations
+const fs = require('fs').promises;
 const path = require('path');
+
+async function downloadAndConvert(videoUrl, outputPath) {
+    const videoInfo = await ytdl.getInfo(videoUrl);
+    const videoFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
+
+    const videoStream = ytdl(videoUrl, { format: videoFormat });
+    const ffmpegCommand = ffmpeg(videoStream)
+        .audioCodec('libmp3lame')
+        .audioBitrate(320);
+
+    const fileStream = fs.createWriteStream(outputPath);
+
+    await new Promise((resolve, reject) => {
+        ffmpegCommand
+            .on('end', resolve)
+            .on('error', reject)
+            .pipe(fileStream);
+    });
+
+    return path.basename(outputPath);
+}
 
 exports.handler = async function (event, context) {
     try {
         const { videoUrl } = JSON.parse(event.body);
-        const info = await ytdl.getInfo(videoUrl);
-        const videoFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+        const fileName = `${Date.now()}.mp3`;
+        const outputPath = path.resolve('public/downloads', fileName);
 
-        const downloadLink = `/downloads/${info.videoDetails.title}.mp3`;
-        const outputPath = path.resolve('public/downloads', `${info.videoDetails.title}.mp3`);
-
-        await downloadAndConvert(videoUrl, videoFormat, outputPath);
+        const savedFileName = await downloadAndConvert(videoUrl, outputPath);
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ downloadLink }),
+            body: JSON.stringify({ downloadLink: `/downloads/${savedFileName}` }),
         };
     } catch (error) {
         console.error('Error in download function:', error);
@@ -27,29 +44,3 @@ exports.handler = async function (event, context) {
         };
     }
 };
-
-async function downloadAndConvert(videoUrl, videoFormat, outputPath) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const videoStream = ytdl(videoUrl, { format: videoFormat });
-            const ffmpegCommand = ffmpeg(videoStream)
-                .audioCodec('libmp3lame')
-                .audioBitrate(320)
-                .on('end', resolve)
-                .on('error', reject);
-
-            const fileStream = fs.createWriteStream(outputPath);
-
-            // Pipe video stream to ffmpeg and save to file
-            videoStream.pipe(ffmpegCommand).pipe(fileStream);
-
-            // Wait for the process to complete
-            await new Promise((innerResolve, innerReject) => {
-                fileStream.on('finish', innerResolve);
-                fileStream.on('error', innerReject);
-            });
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
