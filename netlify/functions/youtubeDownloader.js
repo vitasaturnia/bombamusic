@@ -1,19 +1,19 @@
 // Import required modules
 import ytdl from 'ytdl-core';
 import ffmpeg from 'fluent-ffmpeg';
-import ffmpegPath from 'ffmpeg-static';
+import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { createWriteStream } from 'fs';
 
 // Set the path for the ffmpeg binary
-ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 // Firebase Admin Initialization
+const serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('ascii'));
 const firebaseConfig = {
-    credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+    credential: cert(serviceAccount),
     storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET
 };
 initializeApp(firebaseConfig);
@@ -42,12 +42,10 @@ async function downloadAndConvert(videoUrl) {
 // Function to upload file to Firebase Storage
 async function uploadToFirebaseStorage(filePath, fileName) {
     const bucket = storage.bucket();
-    await bucket.upload(filePath, {
-        destination: fileName,
-    });
+    await bucket.upload(filePath, { destination: fileName });
     const [url] = await bucket.file(fileName).getSignedUrl({
         action: 'read',
-        expires: '03-09-2491', // Set an appropriate expiry date
+        expires: '03-09-2491' // Set an appropriate expiry date
     });
     return url;
 }
@@ -55,12 +53,15 @@ async function uploadToFirebaseStorage(filePath, fileName) {
 // Netlify function handler
 export async function handler(event) {
     if (!event.body) {
-        console.error('Request body is empty.');
-        return { statusCode: 400, body: JSON.stringify({ error: 'Bad Request' }) };
+        return { statusCode: 400, body: JSON.stringify({ error: 'Bad Request: No body found' }) };
     }
 
     try {
         const { videoUrl } = JSON.parse(event.body);
+        if (!videoUrl) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Bad Request: No video URL provided' }) };
+        }
+
         const outputPath = await downloadAndConvert(videoUrl);
         const fileName = outputPath.split('/').pop();
         const downloadUrl = await uploadToFirebaseStorage(outputPath, fileName);
