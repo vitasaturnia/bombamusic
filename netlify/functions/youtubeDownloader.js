@@ -4,35 +4,33 @@ const fs = require('fs').promises;
 const path = require('path');
 const ffmpegPath = require('ffmpeg-static');
 
+// Set the path for the ffmpeg binary
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 async function downloadAndConvert(videoUrl, outputPath) {
     try {
-        console.log('Fetching video information...');
+        // Fetch video information
         const videoInfo = await ytdl.getInfo(videoUrl);
-        console.log('Video information fetched.');
 
-        console.log('Choosing video format...');
+        // Choose the highest quality audio format
         const videoFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
-        console.log('Video format chosen.');
 
-        console.log('Downloading video stream...');
+        // Download video stream
         const videoStream = ytdl(videoUrl, { format: videoFormat });
 
-        console.log('Converting video to mp3...');
-        const ffmpegCommand = ffmpeg(videoStream)
-            .audioCodec('libmp3lame')
-            .audioBitrate(320)
-            .output(outputPath);
-
+        // Convert video to mp3
         await new Promise((resolve, reject) => {
-            ffmpegCommand.on('end', () => {
-                console.log('Video conversion complete.');
-                resolve();
-            }).on('error', (err) => {
-                console.error('Error in ffmpeg:', err);
-                reject(err);
-            }).run();
+            ffmpeg()
+                .input(videoStream)
+                .audioCodec('libmp3lame')
+                .audioBitrate(320)
+                .output(outputPath)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    console.error('Error in ffmpeg:', err);
+                    reject(err);
+                })
+                .run();
         });
 
         return path.basename(outputPath);
@@ -44,8 +42,6 @@ async function downloadAndConvert(videoUrl, outputPath) {
 
 exports.handler = async function (event, context) {
     try {
-        console.log('Function execution started.');
-
         // Check if event.body is not empty
         if (!event.body) {
             console.error('Request body is empty.');
@@ -56,21 +52,19 @@ exports.handler = async function (event, context) {
         }
 
         const { videoUrl } = JSON.parse(event.body);
+
+        // Generate a unique file name
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
-        const outputPath = path.resolve('/tmp', fileName); // Use /tmp as a temporary storage in Netlify Functions
 
-        const savedFileName = await downloadAndConvert(videoUrl, outputPath);
+        // Set the output path directly to the public/downloads folder
+        const outputPath = path.resolve('public/downloads', fileName);
 
-        console.log('Moving the file to public/downloads...');
-        // Move the file to the public/downloads directory
-        const destinationPath = path.resolve('public/downloads', savedFileName);
-        await fs.rename(outputPath, destinationPath);
-
-        console.log('Function execution completed successfully.');
+        // Perform the download and conversion
+        await downloadAndConvert(videoUrl, outputPath);
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ downloadLink: `/downloads/${savedFileName}` }),
+            body: JSON.stringify({ downloadLink: `/downloads/${fileName}` }),
         };
     } catch (error) {
         console.error('Error in download function:', error);
