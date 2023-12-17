@@ -9,16 +9,18 @@ async function downloadAndConvert(videoUrl, outputPath) {
         const videoFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
         const videoStream = ytdl(videoUrl, { format: videoFormat });
 
-        const ffmpegCommand = ffmpeg(videoStream)
+        const ffmpegCommand = ffmpeg()
+            .input(videoStream)
             .audioCodec('libmp3lame')
             .audioBitrate(320)
-            .format('mp3');
+            .outputFormat('mp3')
+            .output(outputPath);
 
-        const fileStream = await fs.createWriteStream(outputPath);
-
-        return new Promise((resolve, reject) => {
-            ffmpegCommand.on('end', resolve).on('error', reject).pipe(fileStream);
+        await new Promise((resolve, reject) => {
+            ffmpegCommand.on('end', resolve).on('error', reject).run();
         });
+
+        return path.basename(outputPath);
     } catch (error) {
         console.error('Error in downloadAndConvert:', error);
         throw error;
@@ -34,9 +36,13 @@ exports.handler = async function (event, context) {
 
         const { videoUrl } = JSON.parse(event.body);
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
-        const outputPath = path.resolve('public/downloads', fileName);
+        const outputPath = path.resolve('/tmp', fileName); // Use /tmp as a temporary storage in Netlify Functions
 
         const savedFileName = await downloadAndConvert(videoUrl, outputPath);
+
+        // Move the file to the public/downloads directory
+        const destinationPath = path.resolve('public/downloads', savedFileName);
+        await fs.rename(outputPath, destinationPath);
 
         return {
             statusCode: 200,
