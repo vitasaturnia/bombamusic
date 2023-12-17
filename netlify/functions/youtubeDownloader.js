@@ -8,19 +8,31 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 async function downloadAndConvert(videoUrl, outputPath) {
     try {
+        console.log('Fetching video information...');
         const videoInfo = await ytdl.getInfo(videoUrl);
+        console.log('Video information fetched.');
+
+        console.log('Choosing video format...');
         const videoFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
+        console.log('Video format chosen.');
+
+        console.log('Downloading video stream...');
         const videoStream = ytdl(videoUrl, { format: videoFormat });
 
-        const ffmpegCommand = ffmpeg()
-            .input(videoStream)
+        console.log('Converting video to mp3...');
+        const ffmpegCommand = ffmpeg(videoStream)
             .audioCodec('libmp3lame')
             .audioBitrate(320)
-            .outputFormat('mp3')
             .output(outputPath);
 
         await new Promise((resolve, reject) => {
-            ffmpegCommand.on('end', resolve).on('error', reject).run();
+            ffmpegCommand.on('end', () => {
+                console.log('Video conversion complete.');
+                resolve();
+            }).on('error', (err) => {
+                console.error('Error in ffmpeg:', err);
+                reject(err);
+            }).run();
         });
 
         return path.basename(outputPath);
@@ -32,9 +44,15 @@ async function downloadAndConvert(videoUrl, outputPath) {
 
 exports.handler = async function (event, context) {
     try {
+        console.log('Function execution started.');
+
         // Check if event.body is not empty
         if (!event.body) {
-            throw new Error('Request body is empty');
+            console.error('Request body is empty.');
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Bad Request' }),
+            };
         }
 
         const { videoUrl } = JSON.parse(event.body);
@@ -43,9 +61,12 @@ exports.handler = async function (event, context) {
 
         const savedFileName = await downloadAndConvert(videoUrl, outputPath);
 
+        console.log('Moving the file to public/downloads...');
         // Move the file to the public/downloads directory
         const destinationPath = path.resolve('public/downloads', savedFileName);
         await fs.rename(outputPath, destinationPath);
+
+        console.log('Function execution completed successfully.');
 
         return {
             statusCode: 200,
