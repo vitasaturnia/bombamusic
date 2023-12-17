@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 const DownloadPage = () => {
     const [videoUrl, setVideoUrl] = useState('');
     const [downloadLink, setDownloadLink] = useState('');
+    const [error, setError] = useState('');
 
     const handleVideoUrlChange = (event) => {
         setVideoUrl(event.target.value);
@@ -23,11 +24,14 @@ const DownloadPage = () => {
             if (response.ok) {
                 const { downloadLink } = await response.json();
                 setDownloadLink(downloadLink);
+                setError('');
             } else {
-                console.error('Failed to fetch download link');
+                const { error } = await response.json();
+                setError(error || 'Failed to fetch download link');
             }
         } catch (error) {
             console.error('Error fetching download link:', error);
+            setError('Error fetching download link');
         }
     };
 
@@ -41,6 +45,7 @@ const DownloadPage = () => {
                 </label>
                 <button type="submit">Download MP3</button>
             </form>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
             {downloadLink && (
                 <div>
                     <p>Download Link:</p>

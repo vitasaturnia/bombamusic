@@ -31,6 +31,11 @@ async function downloadAndConvert(videoUrl, outputPath) {
 
 exports.handler = async function (event, context) {
     try {
+        // Check if event.body is not empty
+        if (!event.body) {
+            throw new Error('Request body is empty');
+        }
+
         const { videoUrl } = JSON.parse(event.body);
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
         const outputPath = path.resolve('public/downloads', fileName);
