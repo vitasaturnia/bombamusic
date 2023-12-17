@@ -11,7 +11,11 @@ import { join } from 'path';
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 // Firebase Admin Initialization
-const serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('ascii'));
+const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+};
 const firebaseConfig = {
     credential: cert(serviceAccount),
     storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET
@@ -45,7 +49,7 @@ async function uploadToFirebaseStorage(filePath, fileName) {
     await bucket.upload(filePath, { destination: fileName });
     const [url] = await bucket.file(fileName).getSignedUrl({
         action: 'read',
-        expires: '03-09-2491' // Set an appropriate expiry date
+        expires: '03-09-2491'
     });
     return url;
 }
