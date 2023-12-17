@@ -10,7 +10,7 @@ const DownloadPage = () => {
 
     const handleDownload = async () => {
         try {
-            const response = await fetch('/.netlify/functions/download', {
+            const response = await fetch('/.netlify/functions/youtubeDownloader', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
