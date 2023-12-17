@@ -13,14 +13,11 @@ async function downloadAndConvert(videoUrl, outputPath) {
             .audioCodec('libmp3lame')
             .audioBitrate(320);
 
-        const fileStream = fs.createWriteStream(outputPath);
-
-        await new Promise((resolve, reject) => {
-            ffmpegCommand
-                .on('end', resolve)
-                .on('error', reject)
-                .pipe(fileStream);
+        const buffer = await new Promise((resolve, reject) => {
+            ffmpegCommand.on('end', resolve).on('error', reject).toBuffer();
         });
+
+        await fs.writeFile(outputPath, buffer);
 
         return path.basename(outputPath);
     } catch (error) {
