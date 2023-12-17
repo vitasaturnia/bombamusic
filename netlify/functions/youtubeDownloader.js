@@ -2,6 +2,9 @@ const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs').promises;
 const path = require('path');
+const ffmpegPath = require('ffmpeg-static');
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 async function downloadAndConvert(videoUrl, outputPath) {
     try {
