@@ -11,15 +11,14 @@ async function downloadAndConvert(videoUrl, outputPath) {
 
         const ffmpegCommand = ffmpeg(videoStream)
             .audioCodec('libmp3lame')
-            .audioBitrate(320);
+            .audioBitrate(320)
+            .format('mp3');
 
-        const buffer = await new Promise((resolve, reject) => {
-            ffmpegCommand.on('end', resolve).on('error', reject).toBuffer();
+        const fileStream = await fs.createWriteStream(outputPath);
+
+        return new Promise((resolve, reject) => {
+            ffmpegCommand.on('end', resolve).on('error', reject).pipe(fileStream);
         });
-
-        await fs.writeFile(outputPath, buffer);
-
-        return path.basename(outputPath);
     } catch (error) {
         console.error('Error in downloadAndConvert:', error);
         throw error;
