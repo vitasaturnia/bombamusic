@@ -8,7 +8,9 @@ const DownloadPage = () => {
         setVideoUrl(event.target.value);
     };
 
-    const handleDownload = async () => {
+    const handleDownload = async (event) => {
+        event.preventDefault();
+
         try {
             const response = await fetch('/.netlify/functions/youtubeDownloader', {
                 method: 'POST',
@@ -19,8 +21,8 @@ const DownloadPage = () => {
             });
 
             if (response.ok) {
-                const result = await response.json();
-                setDownloadLink(result.downloadLink);
+                const { downloadLink } = await response.json();
+                setDownloadLink(downloadLink);
             } else {
                 console.error('Failed to fetch download link');
             }
@@ -32,11 +34,13 @@ const DownloadPage = () => {
     return (
         <div>
             <h1>YouTube to MP3 Downloader</h1>
-            <label>
-                YouTube Video URL:
-                <input type="text" value={videoUrl} onChange={handleVideoUrlChange} />
-            </label>
-            <button onClick={handleDownload}>Download MP3</button>
+            <form onSubmit={handleDownload}>
+                <label>
+                    YouTube Video URL:
+                    <input type="text" value={videoUrl} onChange={handleVideoUrlChange} />
+                </label>
+                <button type="submit">Download MP3</button>
+            </form>
             {downloadLink && (
                 <div>
                     <p>Download Link:</p>
